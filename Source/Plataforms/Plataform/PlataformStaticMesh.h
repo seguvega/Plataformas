@@ -17,22 +17,26 @@ class PLATAFORMS_API APlataformStaticMesh : public AStaticMeshActor
 
 	APlataformStaticMesh();
 protected:
+
 	virtual void BeginPlay() override;
 
 public:
+	///VARIABLES
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Componentes")//No necesita, meta = (AllowPrivateAccess = "true")
 	int32 Velocidad = 50;
 	///meta = (MakeEditWidget = "true") //Me permite editar el F Vector en el Blueprint
 	//Esta Location es relativa osea local, al APlataformStaticMesh Objeto y no es la Location Global
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Componentes", meta = (MakeEditWidget = "true"))
 	FVector FinalLocation;
-
+	
+	///FUNCIONES
 	//Set Activate and Desactivate
 	void SetActivatePlataform();
 	
 	void SetDeactivatePlataform();
 	
 private:
+	///VARIABLES
 	bool Mov = true;
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Componentes", meta = (AllowPrivateAccess = "true"))
@@ -42,5 +46,6 @@ private:
 
 	FVector GlobalFinalLocation;
 
+	///FUNCIONES
 	virtual void Tick(float DeltaTime) override;
 };
