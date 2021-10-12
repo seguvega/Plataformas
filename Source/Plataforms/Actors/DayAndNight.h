@@ -30,9 +30,14 @@ private:
 
 	UPROPERTY(EditAnywhere, Category = "Sky")
 	AActor* SkySphere;
-
+	
+	UPROPERTY(Replicated)///Pongo q mi rotacion se replique añadir -> "Net/UnrealNetwork.h" en el .cpp ademas necesita q se defina -> GetLifetimeReplicatedProps
 	FRotator Rotacion;
 
 	UPROPERTY(EditAnywhere, Category = "Sky")
 	float Velocidad;
+
+	//FUNCIONES
+	///Crear para manejar el UPROPERTY(Replicated) de Rotacion
+	virtual void GetLifetimeReplicatedProps(TArray< FLifetimeProperty >& OutLifetimeProps) const override;
 };

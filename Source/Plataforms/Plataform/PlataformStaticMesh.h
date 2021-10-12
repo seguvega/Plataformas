@@ -42,10 +42,16 @@ private:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Componentes", meta = (AllowPrivateAccess = "true"))
 	int32 ActivePlataform = 1;
 
+	
 	FVector LocationI;
+
+	UPROPERTY(Replicated) ///añadir -> "Net/UnrealNetwork.h" en el .cpp 
+	FVector LocationClient;
 
 	FVector GlobalFinalLocation;
 
 	///FUNCIONES
 	virtual void Tick(float DeltaTime) override;
+
+	virtual void GetLifetimeReplicatedProps(TArray< FLifetimeProperty >& OutLifetimeProps) const override;
 };

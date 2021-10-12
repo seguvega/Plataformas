@@ -1,6 +1,6 @@
 #include "GameInstancePlataforms.h"
 #include "Engine/Engine.h"
-#include "UObject/ConstructorHelpers.h"//Para encontrar el BP
+#include "UObject/ConstructorHelpers.h"//Para encontrar archivos
 #include "Blueprint/UserWidget.h"//Para utilizar el modulo UMG en el .Build.cs
 #include "Plataforms/Widgets/MainMenuWidget.h"
 #include "Plataforms/Widgets/InGameMenu.h"
@@ -62,7 +62,11 @@ void UGameInstancePlataforms::Init()
 			UE_LOG(LogTemp, Error, TEXT("PlayerNickname: %s"), *PlayerName.ToString());
 			UE_LOG(LogTemp, Error, TEXT("IdentityInterface Player Id: %s"), *NetPlayerId->ToString());
 		}
-
+		//Engine para cuando hay problemas de conección
+		if (GEngine != nullptr)
+		{
+			GEngine->OnNetworkFailure().AddUObject(this, &UGameInstancePlataforms::BroadcastNetworkFailure);//Se ejecuta cuando hay errores de conección
+		}
 	}
 	else
 	{
@@ -107,6 +111,7 @@ void UGameInstancePlataforms::GoToMainMenu()
 		{
 			UE_LOG(LogTemp, Error, TEXT("Saliendo de ->%s"), *SessionSearch->SearchResults[UserSelectedIndex.GetValue()].Session.OwningUserName);
 			SessionPtr->UnregisterPlayer(FName(SessionSearch->SearchResults[UserSelectedIndex.GetValue()].Session.OwningUserName), *NetPlayerId);
+			///Para usar el UnregisterPlayer necesito primero registrarles -> RegisterPlayer() a los jugadores
 		}
 
 		//Client Travel
@@ -118,7 +123,7 @@ void UGameInstancePlataforms::GoToMainMenu()
 
 void UGameInstancePlataforms::Host()
 {
-	if (SessionPtr.IsValid() && NetPlayerId.IsValid())//Retorna un true si encuentra una session 
+	if (SessionPtr.IsValid() && NetPlayerId.IsValid())//Retorna un true si encuentra una session y un NetPlayerId
 	{
 		if (SessionPtr->GetNamedSession(PlayerName)) //Si existe la session se destruye y si no existe se crea
 		{
@@ -143,10 +148,14 @@ void UGameInstancePlataforms::CreateSession()
 	{
 		SessionSettings.bIsLANMatch = false;
 	}
-	SessionSettings.NumPublicConnections = 3;
+	SessionSettings.NumPublicConnections = 5;
 	SessionSettings.bShouldAdvertise = true;
+	SessionSettings.bAllowJoinInProgress = true; //joining in progress is allowed or not
+	SessionSettings.bAllowInvites = true; //Acepte Invitaciones
+	SessionSettings.bAllowJoinViaPresence = true; //No se q hace
 	//Config para usar Steam Lobbys
 	SessionSettings.bUsesPresence = true;
+	SessionSettings.bUseLobbiesIfAvailable = true; ///Usa lobbys
 	UE_LOG(LogTemp, Error, TEXT("Creando Session %s ..."), *PlayerName.ToString());
 	//Ctrl + Click en CreateSession y ir a bool FOnlineSessionSteam para ver el codigo de ese metodo OJO
 	SessionPtr->CreateSession(*NetPlayerId, PlayerName, SessionSettings);//Creo la session --> Respuesta Asyncrona
@@ -156,7 +165,7 @@ void UGameInstancePlataforms::OnSessionResp(FName SessionName, bool Resp)
 {
 	if (!Resp)
 	{
-		UE_LOG(LogTemp, Error, TEXT("Session ya existe ->%s"), *SessionName.ToString());
+		UE_LOG(LogTemp, Error, TEXT("Error al Crear la Session %s"), *SessionName.ToString());
 		return;
 	}
 	UE_LOG(LogTemp, Error, TEXT("Session %s Creada"), *SessionName.ToString());
@@ -169,7 +178,8 @@ void UGameInstancePlataforms::OnSessionResp(FName SessionName, bool Resp)
 	//Server Travel
 	UWorld* World = GetWorld();
 	if (!World) return;
-	World->ServerTravel("/Game/ThirdPersonCPP/Maps/game?listen");
+	World->ServerTravel("/Game/Maps/lobby?listen");
+	
 }
 
 void UGameInstancePlataforms::Join(uint32 Index)
@@ -204,6 +214,9 @@ void UGameInstancePlataforms::OnJoinSessionComplete(FName SessionName, EOnJoinSe
 	APlayerController* PlayerController = GetFirstLocalPlayerController();
 	if (!PlayerController) return;
 	PlayerController->ClientTravel(Address, ETravelType::TRAVEL_Absolute);
+
+	///Registro al Cliente en la Session al parecer por defaul ejecuta -> RegisterLocalPlayers el cual no registra bien creo
+	SessionPtr->RegisterPlayer(SessionName, *NetPlayerId, true);
 	//Restablesco el Input
 	if (!Menu) return;
 	Menu->ChangeInputMode();
@@ -220,7 +233,7 @@ void UGameInstancePlataforms::BuscarServerList()
 		//Steam Lobby
 		//QuetySettings es un FOnlineSearchSettings
 		SessionSearch->QuerySettings.Set(SEARCH_PRESENCE, true, EOnlineComparisonOp::Equals);
-		SessionSearch->MaxSearchResults = 100;
+		SessionSearch->MaxSearchResults = 150;
 		SessionPtr->FindSessions(*NetPlayerId, SessionSearch.ToSharedRef());//Convierto mi SessionSearch en un Ref, SessionSearch se carga con la sessiones q encuentra a la vez da una respuesta Asyncrona
 		UE_LOG(LogTemp, Error, TEXT("Buscando Sessiones"));
 	}
@@ -266,14 +279,33 @@ void UGameInstancePlataforms::OnEndSessionResp(FName SessionName, bool Resp)
 	}
 }
 
+/*
+void UGameInstancePlataforms::StartSession()
+{
+	if (SessionPtr.IsValid())
+	{
+		//Compruebo si la session esta creada y si esta la marca como session iniciada y ya no aparece al buscar///PROBAR -> igual ya no sale la partida
+		SessionPtr->StartSession(PlayerName);
+	}
+}*/
+
 void UGameInstancePlataforms::Exit()
 {
 	UE_LOG(LogTemp, Error, TEXT("Salir!!!!!!!!!!!!!"));
 	APlayerController* PlayerController = GetFirstLocalPlayerController();
 	if (!PlayerController) return;
-	PlayerController->ConsoleCommand(FString("Exit"));
+	PlayerController->ConsoleCommand(FString("Exit"));//Para reinicial el nivel RestarLevel
 }
 
+void UGameInstancePlataforms::BroadcastNetworkFailure(UWorld* World, UNetDriver* NetDriver, ENetworkFailure::Type FailureType, const FString& ErrorString)
+{
+	UEngine* Engine = GetEngine();
+	if (!Engine) return;
+	Engine->AddOnScreenDebugMessage(0, 10, FColor::Green, FString::Printf(TEXT("Error: %s"), *ErrorString));
+	APlayerController* PlayerController = GetFirstLocalPlayerController();
+	if (!PlayerController) return;
+	PlayerController->ClientTravel("/Game/MenuSystem/MenuWidget", ETravelType::TRAVEL_Absolute);
+}
 
 void UGameInstancePlataforms::chat(FString msg)
 {

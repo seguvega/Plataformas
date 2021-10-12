@@ -11,6 +11,7 @@ class UEditableTextBox;
 class UFatherWidget;//Clase Padre Widget
 class UPanelWidget;//ScrollBox
 class USeverList;//Widget Lista
+class USoundBase;//Para SoundCue
 
 UCLASS()
 class PLATAFORMS_API UMainMenuWidget : public UFatherWidget
@@ -62,10 +63,18 @@ public:
 protected:
 	virtual bool Initialize() override;
 
+	///Creo un Constructor
+	UMainMenuWidget(const FObjectInitializer& ObjectInitializer);
+
 private:
 	///VARIABLES
 	//Para guardar el id del array de UseverList seleccionado y si no selecciona nada se guarda un null
 	TOptional<uint32> SelectedIndex;
+
+	//Sound
+	USoundBase* BtnSound;
+
+	UWorld* WidgetWorld;
 
 	///FUNCIONES
 	//Funciones del resultado de hacer el Bind = AddDynamic()
@@ -83,4 +92,6 @@ private:
 
 	UFUNCTION()
 	void OnClickExit();
+
+	void PlaySound(USoundBase* Sound);
 };

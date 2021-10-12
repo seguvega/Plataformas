@@ -25,6 +25,9 @@ public:
 	UGameInstancePlataforms(const FObjectInitializer& ObjectInitializer);//El constructor de GameInstance tiene un parametro por default
 
 	virtual void Init(); //No necesito el override ya que esa funcion no es del padre UGameInstance peor de la Interface IMenuInterface
+	
+	//FUNCION
+	//void StartSession();//Sirver para marcar a la creada en el CreateSession() como llena, la llamo desde otra clase -> ALobbyPlataformsGameMode
 
 private:
 	///VARIABLES
@@ -99,6 +102,9 @@ private:
 
 	//Aca no va la UFUNCTION() ya que no se esta especificando la clase del ENumn -> EOnJoinSessionCompleteResult
 	void OnJoinSessionComplete(FName SessionName, EOnJoinSessionCompleteResult::Type Result);
+
+	//OnNetworkFailure Bind o delegates 
+	void BroadcastNetworkFailure(UWorld* World, UNetDriver* NetDriver, ENetworkFailure::Type FailureType, const FString& ErrorString = TEXT(""));
 
 	///Extras Funciones 
 	void CreateSession();

@@ -2,11 +2,15 @@
 
 
 #include "PlataformStaticMesh.h"
+#include  "Net/UnrealNetwork.h"
 
 APlataformStaticMesh::APlataformStaticMesh() 
 {
 	PrimaryActorTick.bCanEverTick = true; ///Activo el tick method en el actor
 	SetMobility(EComponentMobility::Movable);///Pongo q pueda moverse este metodo va a un staticMesh o a un Mesh
+	///REPLICATION
+	bReplicates = true;
+	bAlwaysRelevant = true;
 }
 
 void APlataformStaticMesh::BeginPlay()
@@ -15,20 +19,23 @@ void APlataformStaticMesh::BeginPlay()
 	//Si es el servidor replico el APlataformStaticMesh objeto
 	if (HasAuthority()) 
 	{
-		SetReplicates(true);//Para hacer q este objeto se replique pero este solo funciona en el server
-		SetReplicateMovement(true);
 		//Consigo la Ubicacion
 		LocationI = GetActorLocation();
 		GlobalFinalLocation = GetTransform().TransformPosition(FinalLocation);///Local to Global position
 	}
+	else
+	{
+		LocationClient = GetActorLocation();///Inicializo esta variable en el cliente
+	}
 }
+
 
 void APlataformStaticMesh::SetActivatePlataform()
 {
 	ActivePlataform += 1;
 	if (ActivePlataform >= 2) 
 	{
-		Velocidad *= 2;
+		Velocidad *= 3;
 	}
 }
 
@@ -38,7 +45,7 @@ void APlataformStaticMesh::SetDeactivatePlataform()
 	ActivePlataform -= 1;
 	if (ActivePlataform == 1)
 	{
-		Velocidad /= 2;
+		Velocidad /= 3;
 	}
 }
 
@@ -61,13 +68,13 @@ void APlataformStaticMesh::Tick(float DeltaTime)
 			//  es mas grande significa q la paltaforma se paso del puntoFinal
 			if (Mov)
 			{
-				//Si la distancia entre EL punto final y la ubicacion actual de la plataforma es <= (0.F + DeltaTime * Velocidad) la plataforma de la vuelta 
+				//Si la distancia entre la ubicacion actual y eL punto final de la plataforma es <= (0.F + DeltaTime * Velocidad) la plataforma de la vuelta 
 				if (FVector::Dist(Location, GlobalFinalLocation) <= (0.F + DeltaTime * Velocidad))
 				{
 					//UE_LOG(LogTemp, Error, TEXT("TAS CERCA"));
 					Mov = false;
 				}
-				Direction = (GlobalFinalLocation - LocationI).GetSafeNormal();
+				Direction = (GlobalFinalLocation - LocationI).GetSafeNormal();//Final - Inicial
 			}
 			else
 			{
@@ -79,18 +86,26 @@ void APlataformStaticMesh::Tick(float DeltaTime)
 				Direction = (LocationI - GlobalFinalLocation).GetSafeNormal();
 			}
 			Location += Velocidad * DeltaTime * Direction; ///Mover en X
-
+			LocationClient = Location;//Mando la nueva ubicacion de las plataformas
 			SetActorLocation(Location);
 		}
 	}
-	/*else //Esto ejecutaria el cliente siempre
+	else //Esto ejecutaria solo el cliente siempre
 	{
+		SetActorLocation(LocationClient);
 		//UE_LOG(LogTemp, Warning, TEXT("Eres el cliente")); 
 		//Types of data for UE_LOG
 		//BOOL -> %s
 		//STRING -> %s  --- *YourVariable
 		//INTEGER -> %d
 		//FLOAT -> %f
-		
-	}*/
+	}
+}
+
+///Se ejecuta cuando el servidor detecta cambios en la variable y envia a todos los clientes una replica de esa variable
+void APlataformStaticMesh::GetLifetimeReplicatedProps(TArray< FLifetimeProperty >& OutLifetimeProps) const
+{
+	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
+
+	DOREPLIFETIME(APlataformStaticMesh, LocationClient);
 }

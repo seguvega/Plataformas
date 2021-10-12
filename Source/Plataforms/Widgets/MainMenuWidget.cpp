@@ -6,8 +6,11 @@
 #include "Components/WidgetSwitcher.h"
 #include "Components/EditableTextBox.h"
 #include "Plataforms/Widgets/SeverList.h"
+#include "Kismet/GameplayStatics.h"//Para reproducir el audio
+#include "UObject/ConstructorHelpers.h"//Para encontrar el audio
+#include "Components/Widget.h"//para el GetWorld()
 
-bool UMainMenuWidget::Initialize()
+bool UMainMenuWidget::Initialize() //Parecido al BeginPlay() se ejecuta cada vez q se llama al widget
 {
 	bool Success = Super::Initialize();
 	if (!Success) return Success;
@@ -27,17 +30,32 @@ bool UMainMenuWidget::Initialize()
 	if (!BtnExit) return false;
 	BtnExit->OnClicked.AddDynamic(this, &UMainMenuWidget::OnClickExit);
 
+	WidgetWorld = GetWorld();
+	if (!WidgetWorld) return false;
+
 	return Success;
+}
+
+UMainMenuWidget::UMainMenuWidget(const FObjectInitializer& ObjectInitializer)
+{
+	static ConstructorHelpers::FObjectFinder<USoundBase> SoundObject(TEXT("/Game/StarterContent/Audio/Explosion_Cue"));
+	if (SoundObject.Object)
+	{
+		BtnSound = SoundObject.Object;
+		//UE_LOG(LogTemp, Warning, TEXT("Encontrado -> %s"), *BtnSound->GetName());
+	}
 }
 
 void UMainMenuWidget::OnClickHost()
 {
+	PlaySound(BtnSound);
 	if (!MenuInterface) return;
 	MenuInterface->Host();
 }
 
 void UMainMenuWidget::OnClickJoin()
 {
+	PlaySound(BtnSound);
 	if (!MenuWidgetSwitcher) return;
 	if (!JoinMenu || !MenuInterface) return;
 	MenuWidgetSwitcher->SetActiveWidget(JoinMenu);
@@ -69,6 +87,7 @@ void UMainMenuWidget::SetIndex(uint32 Index)
 
 void UMainMenuWidget::OnJoinMenu()
 {
+	PlaySound(BtnSound);
 	if (SelectedIndex.IsSet())//Compruebo si se seteo un valor porq por default el TOptional<> es null
 	{
 		if (!MenuInterface) return;
@@ -85,6 +104,7 @@ void UMainMenuWidget::OnJoinMenu()
 	//FString IpAddres = TextBoxIP->GetText().ToString();
 	//UE_LOG(LogTemp, Warning, TEXT("Join Ip: %s"), *IpAddres);
 	//MenuInterface->Join("");
+
 }
 
 void UMainMenuWidget::AgregarServidores(USeverList* List)
@@ -98,6 +118,7 @@ void UMainMenuWidget::AgregarServidores(USeverList* List)
 
 void UMainMenuWidget::ReturnMenu()
 {
+	PlaySound(BtnSound);
 	if (!MenuWidgetSwitcher) return;
 	if (!MainMenu) return;
 	MenuWidgetSwitcher->SetActiveWidget(MainMenu);
@@ -105,6 +126,15 @@ void UMainMenuWidget::ReturnMenu()
 
 void UMainMenuWidget::OnClickExit()
 {
+	PlaySound(BtnSound);
 	if (!MenuInterface) return;
 	MenuInterface->Exit();
+}
+
+void UMainMenuWidget::PlaySound(USoundBase* Sound)
+{
+	if (Sound && WidgetWorld)
+	{
+		UGameplayStatics::PlaySound2D(WidgetWorld, Sound, 1.f, 1.f, 0.f, nullptr, WidgetWorld->GetFirstPlayerController(), true);
+	}
 }
